@@ -154,7 +154,7 @@ export class MicroCMSBrowserConnector {
       return {
         success: false,
         message: 'microCMSにログインが必要です',
-        error: 'Not logged in',
+        error: 'Not authenticated',
         executionTime: Date.now() - startTime,
       };
     }
