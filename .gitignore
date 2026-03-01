@@ -49,6 +49,9 @@ jspm_packages/
 .env.production
 .env.local
 
+# direnv environment variables file
+.envrc
+
 # IDE files
 .vscode/
 .idea/
