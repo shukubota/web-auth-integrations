@@ -28,7 +28,12 @@ export class AIAutomationEngine {
       ...config
     };
 
-    this.claudeClient = new ClaudeAIClient(config.apiKey);
+    try {
+      this.claudeClient = new ClaudeAIClient();
+    } catch (error) {
+      console.warn('⚠️ AI automation disabled:', error instanceof Error ? error.message : 'Unknown error');
+      this.claudeClient = null as any;
+    }
   }
 
   async executeInstruction(
@@ -40,6 +45,10 @@ export class AIAutomationEngine {
     let retryCount = 0;
 
     try {
+      if (!this.claudeClient) {
+        throw new Error('Claude AI client not available. Please set ANTHROPIC_API_KEY environment variable.');
+      }
+
       console.log('🤖 AI Automation: Starting instruction execution:', instruction);
 
       while (retryCount < this.config.maxRetries) {

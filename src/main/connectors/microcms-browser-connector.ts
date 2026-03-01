@@ -414,6 +414,15 @@ export class MicroCMSBrowserConnector {
           screenshotCount: result.screenshots.length
         };
       } else {
+        // If AI automation fails, provide helpful error message
+        if (result.error?.includes('ANTHROPIC_API_KEY')) {
+          return {
+            success: false,
+            message: 'AI automation requires Claude API key. Please set ANTHROPIC_API_KEY environment variable.',
+            serviceName: serviceName,
+            error: 'API key not configured'
+          };
+        }
         throw new Error(result.error || 'AI automation failed');
       }
 
