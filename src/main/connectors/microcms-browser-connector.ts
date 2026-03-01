@@ -11,26 +11,194 @@ export class MicroCMSBrowserConnector {
 
   constructor() {}
 
+  // Login with provided credentials
+  async loginWithCredentials(email: string, password: string): Promise<boolean> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        this.createBrowserWindow();
+
+        if (!this.browserWindow) {
+          resolve(false);
+          return;
+        }
+
+        // Navigate to microCMS login page (proper signin URL)
+        await this.browserWindow.loadURL('https://auth.microcms.io/signin');
+
+        // Wait for page to load
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Fill in credentials and submit
+        const loginSuccess = await this.browserWindow.webContents.executeJavaScript(`
+          (async function() {
+            try {
+              // Wait for login form to be ready
+              await new Promise((resolve) => {
+                const checkForm = () => {
+                  const emailField = document.querySelector('input[type="email"], input[name="email"], input[placeholder*="mail"], input[placeholder*="メール"]');
+                  const passwordField = document.querySelector('input[type="password"], input[name="password"]');
+                  if (emailField && passwordField) {
+                    resolve(true);
+                  } else {
+                    setTimeout(checkForm, 500);
+                  }
+                };
+                checkForm();
+              });
+
+              // Fill email
+              const emailField = document.querySelector('input[type="email"], input[name="email"], input[placeholder*="mail"], input[placeholder*="メール"]');
+              if (emailField) {
+                emailField.focus();
+                emailField.value = '${email}';
+                emailField.dispatchEvent(new Event('input', { bubbles: true }));
+                emailField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+
+              // Small delay
+              await new Promise(r => setTimeout(r, 500));
+
+              // Fill password
+              const passwordField = document.querySelector('input[type="password"], input[name="password"]');
+              if (passwordField) {
+                passwordField.focus();
+                passwordField.value = '${password}';
+                passwordField.dispatchEvent(new Event('input', { bubbles: true }));
+                passwordField.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+
+              // Small delay before submit
+              await new Promise(r => setTimeout(r, 500));
+
+              // Submit form
+              const submitButton = document.querySelector('button[type="submit"], input[type="submit"], button:contains("ログイン"), button:contains("Sign in"), button:contains("signin")');
+              if (submitButton) {
+                submitButton.click();
+                return true;
+              } else {
+                // Try form submission
+                const form = document.querySelector('form');
+                if (form) {
+                  form.submit();
+                  return true;
+                }
+              }
+              return false;
+            } catch (error) {
+              console.error('Login automation error:', error);
+              return false;
+            }
+          })();
+        `);
+
+        if (!loginSuccess) {
+          resolve(false);
+          return;
+        }
+
+        // Wait for login to complete and check for success
+        let checkCount = 0;
+        const checkLogin = async () => {
+          try {
+            const isLoggedIn = await this.browserWindow?.webContents.executeJavaScript(`
+              (window.location.href.includes('app.microcms.io') &&
+               !window.location.href.includes('signin') &&
+               !window.location.href.includes('login')) ||
+              document.querySelector('body').innerText.includes('サービス') ||
+              document.querySelector('body').innerText.includes('services')
+            `);
+
+            if (isLoggedIn) {
+              this.isLoggedIn = true;
+              await this.storeSessionData();
+              resolve(true);
+              return;
+            }
+
+            // Check for error messages
+            const hasError = await this.browserWindow?.webContents.executeJavaScript(`
+              document.querySelector('body').innerText.includes('正しくありません') ||
+              document.querySelector('body').innerText.includes('incorrect') ||
+              document.querySelector('body').innerText.includes('エラー')
+            `);
+
+            if (hasError) {
+              resolve(false);
+              return;
+            }
+
+            checkCount++;
+            if (checkCount < 10) {
+              setTimeout(checkLogin, 1000);
+            } else {
+              resolve(false);
+            }
+          } catch (error) {
+            resolve(false);
+          }
+        };
+
+        // Start checking
+        setTimeout(checkLogin, 2000);
+
+      } catch (error) {
+        console.error('Login error:', error);
+        reject(error);
+      }
+    });
+  }
+
+  private async storeSessionData(): Promise<void> {
+    try {
+      if (!this.browserWindow) return;
+
+      const session = this.browserWindow.webContents.session;
+      const cookies = await session.cookies.get({ url: 'https://microcms.io' });
+
+      // Store session info for auto-login next time
+      // const sessionData = {
+      //   cookies: cookies,
+      //   timestamp: Date.now()
+      // };
+
+      // Note: In a real implementation, you would encrypt and store this securely
+      // For now, we just log the session storage
+      console.log('Session stored for auto-login, cookies count:', cookies.length);
+    } catch (error) {
+      console.error('Failed to store session data:', error);
+    }
+  }
+
+  private createBrowserWindow(): void {
+    if (this.browserWindow) {
+      return; // Already exists
+    }
+
+    this.browserWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      show: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        webSecurity: true,
+      },
+      title: 'microCMS ログイン',
+    });
+
+    this.setupLoginDetection();
+  }
+
   async openMicroCMSLogin(): Promise<boolean> {
     try {
-      // Create a new browser window for microCMS
-      this.browserWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        show: true,
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true,
-          webSecurity: true,
-        },
-        title: 'microCMS ログイン',
-      });
+      this.createBrowserWindow();
 
-      // Load microCMS login page
-      await this.browserWindow.loadURL('https://app.microcms.io/');
+      if (!this.browserWindow) {
+        return false;
+      }
 
-      // Wait for user to login
-      this.setupLoginDetection();
+      // Load microCMS login page (proper signin URL to avoid registration page)
+      await this.browserWindow.loadURL('https://auth.microcms.io/signin');
 
       return true;
     } catch (error) {

@@ -44,26 +44,19 @@ const ChatInterface: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleOpenLogin = async (): Promise<boolean> => {
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
     try {
-      const result = await window.electronAPI.microCMS.openLogin();
+      const result = await window.electronAPI.microCMS.login(email, password);
       if (result.success) {
-        // Start monitoring for login status
-        const checkLoginStatus = async () => {
-          const status = await window.electronAPI.microCMS.getStatus();
-          setMicroCMSStatus(status);
+        // Update status
+        const status = await window.electronAPI.microCMS.getStatus();
+        setMicroCMSStatus(status);
 
-          if (status.connected && pendingCommand) {
-            await processSingleMessage(pendingCommand);
-            setPendingCommand(null);
-          }
-        };
-
-        // Check status periodically
-        const statusCheck = setInterval(checkLoginStatus, 2000);
-
-        // Stop checking after 5 minutes
-        setTimeout(() => clearInterval(statusCheck), 300000);
+        // Execute pending command if there is one
+        if (status.connected && pendingCommand) {
+          await processSingleMessage(pendingCommand);
+          setPendingCommand(null);
+        }
 
         return true;
       }
@@ -381,7 +374,7 @@ const ChatInterface: React.FC = () => {
           setShowLoginPrompt(false);
           setPendingCommand(null);
         }}
-        onOpenLogin={handleOpenLogin}
+        onLogin={handleLogin}
       />
     </div>
   );

@@ -91,17 +91,18 @@ class Application {
     });
 
     // microCMS
-    ipcMain.handle(IPC_EVENTS.MICROCMS_AUTHENTICATE, async () => {
+    ipcMain.handle(IPC_EVENTS.MICROCMS_AUTHENTICATE, async (_, credentials) => {
       try {
-        const success = await this.microCMSBrowserConnector.openMicroCMSLogin();
+        const { email, password } = credentials;
+        const success = await this.microCMSBrowserConnector.loginWithCredentials(email, password);
         return {
           success,
-          message: success ? 'microCMSログイン画面を開きました。ブラウザでログインしてください。' : 'ログイン画面の表示に失敗しました'
+          message: success ? 'microCMSへのログインが完了しました。' : 'ログインに失敗しました。メールアドレスとパスワードを確認してください。'
         };
       } catch (error) {
         return {
           success: false,
-          message: 'ログイン画面の表示中にエラーが発生しました',
+          message: 'ログイン中にエラーが発生しました',
           error: error instanceof Error ? error.message : 'Unknown error'
         };
       }

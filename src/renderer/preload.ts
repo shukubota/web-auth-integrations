@@ -15,7 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // microCMS
   microCMS: {
-    openLogin: () => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_AUTHENTICATE),
+    login: (email: string, password: string) => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_AUTHENTICATE, { email, password }),
     getStatus: () => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_STATUS),
     executeCommand: (command: any) => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_EXECUTE_COMMAND, command),
     parseInstruction: (instruction: string) => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_PARSE_INSTRUCTION, instruction),
@@ -42,7 +42,7 @@ declare global {
       sendMessage: (message: string) => Promise<any>;
       getChatHistory: () => Promise<any>;
       microCMS: {
-        openLogin: () => Promise<any>;
+        login: (email: string, password: string) => Promise<any>;
         getStatus: () => Promise<any>;
         executeCommand: (command: any) => Promise<any>;
         parseInstruction: (instruction: string) => Promise<any>;
