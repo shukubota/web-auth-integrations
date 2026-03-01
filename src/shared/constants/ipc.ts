@@ -21,6 +21,15 @@ export const IPC_EVENTS = {
   CHAT_HISTORY: 'chat:history',
   CHAT_CLEAR: 'chat:clear',
 
+  // microCMS
+  MICROCMS_AUTHENTICATE: 'microcms:authenticate',
+  MICROCMS_EXECUTE_COMMAND: 'microcms:execute-command',
+  MICROCMS_GET_APIS: 'microcms:get-apis',
+  MICROCMS_GET_CONTENT: 'microcms:get-content',
+  MICROCMS_PARSE_INSTRUCTION: 'microcms:parse-instruction',
+  MICROCMS_STATUS: 'microcms:status',
+  MICROCMS_CLOSE_BROWSER: 'microcms:close-browser',
+
   // Database
   DB_SAVE: 'db:save',
   DB_LOAD: 'db:load',

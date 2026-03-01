@@ -13,6 +13,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendMessage: (message: string) => ipcRenderer.invoke(IPC_EVENTS.CHAT_MESSAGE, message),
   getChatHistory: () => ipcRenderer.invoke(IPC_EVENTS.CHAT_HISTORY),
 
+  // microCMS
+  microCMS: {
+    openLogin: () => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_AUTHENTICATE),
+    getStatus: () => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_STATUS),
+    executeCommand: (command: any) => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_EXECUTE_COMMAND, command),
+    parseInstruction: (instruction: string) => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_PARSE_INSTRUCTION, instruction),
+    closeBrowser: () => ipcRenderer.invoke(IPC_EVENTS.MICROCMS_CLOSE_BROWSER),
+  },
+
   // Task management
   planTask: (instruction: string) => ipcRenderer.invoke(IPC_EVENTS.TASK_PLAN, instruction),
   executeTask: (planId: string) => ipcRenderer.invoke(IPC_EVENTS.TASK_EXECUTE, planId),
@@ -32,6 +41,13 @@ declare global {
       getAuthStatus: () => Promise<any>;
       sendMessage: (message: string) => Promise<any>;
       getChatHistory: () => Promise<any>;
+      microCMS: {
+        openLogin: () => Promise<any>;
+        getStatus: () => Promise<any>;
+        executeCommand: (command: any) => Promise<any>;
+        parseInstruction: (instruction: string) => Promise<any>;
+        closeBrowser: () => Promise<any>;
+      };
       planTask: (instruction: string) => Promise<any>;
       executeTask: (planId: string) => Promise<any>;
       onTaskProgress: (callback: (data: any) => void) => void;
