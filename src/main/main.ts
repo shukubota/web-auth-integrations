@@ -65,7 +65,8 @@ class Application {
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow?.show();
 
-      if (this.isDev) {
+      // Always open DevTools for debugging during development phase
+      if (this.isDev || process.env.DEBUG_MODE === 'true') {
         this.mainWindow?.webContents.openDevTools();
       }
     });
