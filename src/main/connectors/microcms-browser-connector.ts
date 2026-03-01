@@ -3,13 +3,21 @@ import {
   MicroCMSCommand,
   MicroCMSCommandResult
 } from '@shared/types/microcms';
+import { AIAutomationEngine } from '../ai/ai-automation-engine';
 
 export class MicroCMSBrowserConnector {
   private browserWindow: BrowserWindow | null = null;
   private isLoggedIn: boolean = false;
   private currentService: string | null = null;
+  private aiEngine: AIAutomationEngine;
 
-  constructor() {}
+  constructor() {
+    this.aiEngine = new AIAutomationEngine({
+      maxRetries: 3,
+      stepTimeout: 10000,
+      screenshotDelay: 2000
+    });
+  }
 
   // Login with provided credentials
   async loginWithCredentials(email: string, password: string): Promise<boolean> {
@@ -379,194 +387,38 @@ export class MicroCMSBrowserConnector {
     if (!this.browserWindow) throw new Error('Browser window not available');
 
     try {
-      console.log('=== DEBUG: Starting service creation ===');
+      console.log('🤖 Starting AI-powered service creation...');
       console.log('Service data:', serviceData);
 
       // Navigate to microCMS dashboard
       await this.browserWindow.loadURL('https://app.microcms.io/');
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Re-inject helper to ensure it's available
-      await this.injectHelper();
+      // Prepare instruction for AI agent
+      const serviceName = serviceData.name || 'MyNewService';
+      const instruction = `Create a new service in microCMS with the name "${serviceName}". Look for a service creation button, click it, fill in the service name, and submit the form.`;
 
-      // Execute service creation with comprehensive debugging
-      const result = await this.browserWindow.webContents.executeJavaScript(`
-        new Promise(async (resolve, reject) => {
-          try {
-            console.log('=== Page Analysis Start ===');
-            console.log('Current URL:', window.location.href);
-            console.log('Page title:', document.title);
-            console.log('Body text preview:', document.body?.innerText?.substring(0, 200));
+      console.log('📝 AI Instruction:', instruction);
 
-            // Ensure helper is available
-            if (typeof window.microCMSHelper === 'undefined') {
-              console.log('microCMSHelper not found, defining basic helper...');
-              window.microCMSHelper = {
-                waitForElement: (selector, timeout = 5000) => {
-                  return new Promise((resolve, reject) => {
-                    const element = document.querySelector(selector);
-                    if (element) {
-                      resolve(element);
-                      return;
-                    }
-                    setTimeout(() => reject(new Error('Element not found: ' + selector)), timeout);
-                  });
-                },
-                fillInput: (selector, value) => {
-                  const input = document.querySelector(selector);
-                  if (input) {
-                    input.value = value;
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                  }
-                }
-              };
-            }
+      // Execute with AI automation engine
+      const result = await this.aiEngine.executeInstruction(this.browserWindow, instruction);
 
-            // List all interactive elements for debugging
-            const buttons = Array.from(document.querySelectorAll('button, a[role="button"], [role="button"]'));
-            const buttonInfo = buttons.map(btn => ({
-              text: btn.textContent?.trim()?.substring(0, 50),
-              href: btn.getAttribute('href'),
-              id: btn.id,
-              className: btn.className.substring(0, 50),
-              dataTestId: btn.getAttribute('data-testid')
-            })).filter(info => info.text);
+      console.log('🎯 AI Automation Result:', result);
 
-            console.log('Available buttons:', buttonInfo);
-
-            // Look for service creation elements with multiple strategies
-            let createButton = null;
-            const strategies = [
-              // Strategy 1: Look for service-specific buttons
-              () => document.querySelector('[data-testid*="create"][data-testid*="service"]'),
-              () => document.querySelector('[data-testid="create-service-button"]'),
-              () => document.querySelector('button[data-testid*="create"]'),
-
-              // Strategy 2: Look by text content
-              () => buttons.find(btn => btn.textContent?.includes('サービス') && btn.textContent?.includes('作成')),
-              () => buttons.find(btn => btn.textContent?.includes('新規サービス')),
-              () => buttons.find(btn => btn.textContent?.includes('新しいサービス')),
-              () => buttons.find(btn => btn.textContent?.includes('作成')),
-
-              // Strategy 3: Look for create/add buttons
-              () => document.querySelector('.create-service'),
-              () => document.querySelector('.new-service'),
-              () => document.querySelector('a[href*="create"]'),
-              () => document.querySelector('a[href*="new"]'),
-
-              // Strategy 4: Look for plus/add buttons
-              () => document.querySelector('button[aria-label*="作成"]'),
-              () => document.querySelector('button[title*="作成"]'),
-              () => buttons.find(btn => btn.textContent?.trim() === '+'),
-            ];
-
-            for (let i = 0; i < strategies.length; i++) {
-              try {
-                createButton = strategies[i]();
-                if (createButton) {
-                  console.log(\`Found create button with strategy \${i + 1}\`);
-                  break;
-                }
-              } catch (e) {
-                console.log(\`Strategy \${i + 1} failed:, e.message\`);
-              }
-            }
-
-            if (!createButton) {
-              console.log('No create button found with any strategy');
-              reject(new Error(\`Create service button not found. Available buttons: \${JSON.stringify(buttonInfo.slice(0, 5))}\`));
-              return;
-            }
-
-            console.log('Clicking create button:', createButton.textContent?.trim());
-            createButton.click();
-
-            // Wait for modal/form to appear
-            setTimeout(async () => {
-              try {
-                console.log('Looking for form fields after button click...');
-
-                // Look for form inputs with various selectors
-                const inputSelectors = [
-                  'input[name="name"]',
-                  'input[name="serviceName"]',
-                  'input[placeholder*="サービス名"]',
-                  'input[placeholder*="名前"]',
-                  'input[placeholder*="name"]',
-                  'input[type="text"]'
-                ];
-
-                let nameInput = null;
-                for (const selector of inputSelectors) {
-                  nameInput = document.querySelector(selector);
-                  if (nameInput) {
-                    console.log('Found name input:', selector);
-                    break;
-                  }
-                }
-
-                const serviceName = '${serviceData.name || 'MyNewService'}';
-
-                if (nameInput) {
-                  console.log('Filling service name:', serviceName);
-                  nameInput.focus();
-                  nameInput.value = serviceName;
-                  nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-                  nameInput.dispatchEvent(new Event('change', { bubbles: true }));
-                } else {
-                  console.log('Name input not found');
-                }
-
-                // Look for submit button
-                const submitButtons = [
-                  document.querySelector('button[type="submit"]'),
-                  ...buttons.filter(btn => btn.textContent?.includes('作成')),
-                  ...buttons.filter(btn => btn.textContent?.includes('Submit')),
-                  ...buttons.filter(btn => btn.textContent?.includes('送信')),
-                  document.querySelector('.submit-btn'),
-                  document.querySelector('.btn-primary')
-                ];
-
-                const submitButton = submitButtons.find(btn => btn);
-
-                if (submitButton) {
-                  console.log('Found submit button, clicking...');
-                  await new Promise(r => setTimeout(r, 500));
-                  submitButton.click();
-
-                  resolve({
-                    success: true,
-                    message: 'Service creation form submitted',
-                    serviceName: serviceName
-                  });
-                } else {
-                  console.log('Submit button not found');
-                  resolve({
-                    success: false,
-                    message: 'Submit button not found after form fill',
-                    serviceName: serviceName
-                  });
-                }
-
-              } catch (formError) {
-                console.error('Form handling error:', formError);
-                reject(new Error('Form handling failed: ' + formError.message));
-              }
-            }, 3000);
-
-          } catch (error) {
-            console.error('Service creation automation error:', error);
-            reject(error);
-          }
-        });
-      `);
-
-      console.log('Service creation automation result:', result);
-      return result;
+      if (result.success) {
+        return {
+          success: true,
+          message: `Service "${serviceName}" created successfully using AI automation`,
+          serviceName: serviceName,
+          executedSteps: result.executedSteps,
+          screenshotCount: result.screenshots.length
+        };
+      } else {
+        throw new Error(result.error || 'AI automation failed');
+      }
 
     } catch (error) {
-      console.error('createServiceViaBrowser outer error:', error);
+      console.error('💥 AI service creation failed:', error);
       throw new Error(`Failed to create service: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

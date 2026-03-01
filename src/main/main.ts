@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { IPC_EVENTS } from '@shared/constants/ipc';
